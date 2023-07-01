@@ -6,20 +6,27 @@ MainWindow::MainWindow(QWidget *parent):QMainWindow(parent),ui(new Ui::MainWindo
 {
     ui->setupUi(this);
 
-   Starter();
+   Starter(); //Set all variables
 
+   //To rescan
    connect(ui->button_rescan,SIGNAL(clicked()),this,SLOT(button_rescan()));
 
+   //Enable on/off in button
    ui->record_stop->setCheckable(true);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////
 MainWindow::~MainWindow()
 {
+    if(M_principal)
+        delete M_principal;
+    if(M_auxiliar)
+        delete M_auxiliar;
     delete ui;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::detect_cams()
 {
+    RightClick();
     cameras.clear();
     ui->TableWidget_Cams->setRowCount(0);
     int row_number = 0;
@@ -58,7 +65,7 @@ void MainWindow::detect_cams()
     else if(cameras.size()==1)
         sysCommand = "1 Camera found!!";
     else
-        sysCommand = QString::number(cameras.size()) + " Camera found!!";
+        sysCommand = QString::number(cameras.size()) + " Cameras found!!";
 
     ui->command->setText(sysCommand);
 }
@@ -83,7 +90,7 @@ void MainWindow::on_dateEdit_editingFinished()
     QDate ActualDate = QDate::currentDate();
     int daysRemaining;
 
-    Birth = ui->dateEdit->date()  ;
+    Birth = ui->dateEdit->date() ;
 
     int babyDays = Birth.daysTo(ActualDate);
 
@@ -105,12 +112,16 @@ void MainWindow::on_dateEdit_editingFinished()
         return;
     }
 
-                      //40 semanas
-    daysRemaining = 280-babyDays;
+                              //40 semanas
+    daysRemaining = babyDays - (280 -(m_semanas*7));
 
     QDate dateCorreta = Birth.addDays(daysRemaining);
 
-    int correctDays = Birth.daysTo(dateCorreta);
+//    int correctDays = Birth.daysTo(dateCorreta);
+//    correctDays = Birth.addDays(correctDays);
+    int correctDays = dateCorreta.daysTo(ActualDate);
+    dateCorreta = Birth.addDays(correctDays);
+    correctDays = dateCorreta.daysTo(ActualDate);
 
     //Same with Correct Age
     semanas = std::floor(correctDays/7);
@@ -122,6 +133,11 @@ void MainWindow::on_dateEdit_editingFinished()
     //Insert
 
     ui->correctAge->setText(idadeCorrigida);
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////
+void MainWindow::on_lineEdit_editingFinished()
+{
+    m_semanas = ui->lineEdit->text().toInt();
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::on_test_1_clicked(){
@@ -212,84 +228,6 @@ void MainWindow::RightClick()
         });
 }
 //////////////////////////////////////////////////////////////////////////////////////////////
-QDir MainWindow::record_cam(QString filename, std::string winName)
-{
-
-    int wichCam =0;
-    winName=="Principal" ? wichCam = principalCam : wichCam = auxiliarCam;
-
-        cv::VideoCapture cam(wichCam); //Open cam
-
-    cv::VideoWriter video; //Class to write the frames
-
-    int fourcc = cv::VideoWriter::fourcc('M','J','P','G'); //Set forcc variable
-
-    QDir folder(QCoreApplication::applicationDirPath()); //Executable folder
-    QDir babyFolder, nullFolder;//Baby path and a null folder for return
-
-    cv::Mat frame; //Frame of video
-    int fps = 0; //Fps
-
-
-    folder.mkdir("Files");
-    folder.cd("Files");
-    //Check if cam open
-    if(!cam.isOpened()){
-        std::cerr<<"Cannot open VideoCapture cam "+ m_cam;
-        QDir null;
-        return null;
-      }
-
-    //Create folder tests
-    if(folder.mkpath(babyName+"_"+momName) && !isRecordClicked)
-        isRecordClicked = true;
-    else
-    {
-        if(!isRecordClicked)
-        {
-//            MainWindow::ui->command->setText("Cannot create folder");
-
-            return nullFolder;
-        }
-    }
-
-    babyFolder = folder.filePath(babyName+"_"+momName);
-    babyFolder = babyFolder.filePath(filename); //Add test(1,2,..) in babyFolder
-
-    filename = babyFolder.absolutePath();
-
-    cam>>frame; //To get fps value
-    fps = cam.get(cv::CAP_PROP_FPS);
-    cv::namedWindow(winName,cv::WINDOW_NORMAL); //Window
-
-    winName=="Principal" ?
-
-        cv::resizeWindow(winName, cv::Size(640,480));/*Principal windowSize */:
-        cv::resizeWindow(winName, cv::Size(640,480));//Auxiliar windowSize
-
-    video.open(filename.toStdString(), fourcc, fps, frame.size(), true);
-
-    while(cam.read(frame))
-    {
-        video.write(frame);
-
-        cv::imshow(winName,frame);
-
-        if(cv::waitKey(1)==32 || recordChecked == true)
-        {
-            MainWindow::ui->record_stop->setText("Gravar");
-            cv::destroyAllWindows();
-            recordChecked = true;//turn off button
-            break;
-        }
-    }
-
-    cam.release();
-    video.release();
-
-    return babyFolder;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::testCompleted(int test, QString color)
 {
     if(test==0)
@@ -313,10 +251,11 @@ void MainWindow::Starter()
     cameras.clear();
     currentTest=principalCam=auxiliarCam = -1;
 
+    m_semanas = 0;
+
     //Clear QVector<bool> and bool
     tests = QVector<bool>(3,false);
-    isRecordClicked = false;
-    recordChecked = true;
+    startRecord = false;
 
     //Clear QDate
     QDate clear;
@@ -330,7 +269,6 @@ void MainWindow::Starter()
 
     //Functions
     detect_cams();
-    RightClick();
     //
 
     //Re-format texts
@@ -343,6 +281,20 @@ void MainWindow::Starter()
 
     //Start Message
     ui->command->setText("Welcome to BabyTracker!!");
+
+    //Threads
+    M_auxiliar = nullptr;
+    M_principal = nullptr;
+
+    //Folders
+    QDir empty;
+    P_folder = A_folder = empty;
+    atualFolder = atualFolder.filePath(QCoreApplication::applicationDirPath());
+
+    //To get only numbers in week QLine
+    QIntValidator *validator = new QIntValidator(this);
+    ui->lineEdit->setValidator(validator);
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::createTxt()
@@ -360,10 +312,7 @@ void MainWindow::createTxt()
         stream<<"Nascimento: " + Birth.toString("dd/MM/yyyy")+ "\n";
         stream<<"Idade Cronologica: " + idadeCronologica + "\n";
         if(idadeCorrigida!="")
-        {
-            stream<<"Idade Corrigida: 40 semanas \n";
-            stream<<"Restante para idade correta: " + idadeCorrigida + "\n";
-        }
+            stream<<"Idade Corrigida: "+idadeCorrigida;
     }
     file.close();
 }
@@ -375,103 +324,141 @@ void MainWindow::delay(int n)
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////
-
 void MainWindow::on_record_stop_clicked(bool checked)
 {
+    recordChecked.store(checked); //Atomic<bool> variable for threads stop management
+
 
     if(!checked)
     {
-        recordChecked = true;
 
         if(M_auxiliar)
-        {
-            while( M_principal->isRunning() && M_auxiliar->isRunning() )
+            while(M_auxiliar->isRunning() && M_principal->isRunning())
                 ;
-        }
         else
-        {
-            while( M_principal->isRunning())
+            while(M_principal->isRunning())
                 ;
-        }
 
-        delay(3000);
-
-        cv::destroyAllWindows();
         MainWindow::ui->record_stop->setText("Gravar");
 
-        delete M_principal;
-
+        M_principal->exit();
         if(M_auxiliar)
-            delete M_auxiliar;
+            M_auxiliar->exit();
 
-        //Check if file was created
-        if(!P_folder.exists())
-        {
-            MainWindow::ui->command->setText("Test "+QString::number(currentTest+1)+" suceffuly recorded!");
-            testCompleted(currentTest,"rgb(144, 238, 144);");
-        }
-        else
-            MainWindow::ui->command->setText("Cannot create test "+QString::number(currentTest+1)+" file.");
+        checkFileCreation();
+
+        cv::destroyAllWindows();
+
+//        bool completed = std::all_of(tests.begin(), tests.end(),[](bool v){return v;});
+
+//        if(completed)
+//        {
+//            this->ui->command->setText("All tests has been recorded!");
+//        }
+
+
     }
-
+    //Button Clicked
     else if(checked)
     {
-        recordChecked = false;
+        //Return true if error found
+        if(checkErrors()==true) return;
 
-        //Verify User Variables
-        if(principalCam == -1)
-        {
-            ui->command->setText("Please select a camera first!");
-            return;
-        }
-        else if(currentTest == -1)
-        {
-            ui->command->setText("Please select a test first!");
-            return;
-        }
-        else if(babyName =="" || momName =="")
-        {
-            ui->command->setText("Please insert baby and mom name");
-            return;
-        }
+//        if(!M_auxiliar )
 
         createTxt();
-        QString filename_cam1;
-        QString filename_cam2;
+        makeFolder();
+        this->ui->command->setText("Aguarde um momento!!");
+        this->ui->record_stop->setText("Gravando...");
+
+        if(principalCam != -1 && !M_principal)
+            M_principal = new MultiThread("Principal",principalCam, &recordChecked, &startRecord);
+
+        if(auxiliarCam != -1 && !M_auxiliar)
+            M_auxiliar = new MultiThread("Auxiliar",auxiliarCam, &recordChecked, &startRecord);
 
 
-        filename_cam1 ="test_"+QString::number(currentTest+1)+"_Principal_cam.avi";
-        filename_cam2 ="test_"+QString::number(currentTest+1)+"_Auxiliar_cam.avi";
+
+        if(M_principal)
+        {
+            M_principal->setCam(principalCam);
+            M_principal->setFileName(P_folder);
+            M_principal->start();
+        }
+
+        if(M_auxiliar)
+        {
+
+            M_auxiliar->setCam(auxiliarCam);
+            M_auxiliar->setFileName(A_folder);
+            M_auxiliar->start();
+        }
 
 
-        P_folder = P_folder.filePath(QCoreApplication::applicationDirPath()); //Executable folder
-        P_folder.mkdir("Files");
-        P_folder.cd("Files");
-
-        //Create folder tests
-        P_folder.mkpath(babyName+"_"+momName);
-        P_folder.cd(babyName+"_"+momName);
-
-        //Auxiliar Cam file
-        A_folder = P_folder.filePath(filename_cam2);
-        //Principal cam file
-        P_folder = P_folder.filePath(filename_cam1);
-
-        ui->record_stop->setText("Gravando..");
-
-        M_auxiliar = nullptr;
-
-        M_principal = new MultiThread(P_folder,"Principal",principalCam, &recordChecked);
-                if(auxiliarCam!=-1)
-                    M_auxiliar = new MultiThread(A_folder,"Auxiliar",auxiliarCam, &recordChecked);
-
-
-        M_principal->start();
-
-                if(M_auxiliar) //if is opened
-                    M_auxiliar->start();
-
-        delay(100);
     }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+bool MainWindow::checkErrors()
+{
+    //Verify User Variables
+    if(principalCam == -1)
+    {
+      ui->command->setText("Please select a camera first!");
+      return true;
+    }
+    else if(currentTest == -1)
+    {
+      ui->command->setText("Please select a test first!");
+      return true;
+    }
+    else if(babyName =="" || momName =="")
+    {
+      ui->command->setText("Please insert baby and mom name");
+      return true;
+    }
+    else
+      return false;
+
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+void MainWindow::makeFolder()
+{
+    QString filename_cam1;
+    QString filename_cam2;
+
+    filename_cam1 ="test_"+QString::number(currentTest+1)+"_Principal_cam.avi";
+    filename_cam2 ="test_"+QString::number(currentTest+1)+"_Auxiliar_cam.avi";
+
+
+    P_folder = atualFolder; //Executable folder
+    P_folder.mkdir("Files");
+    P_folder.cd("Files");
+
+    //Create folder tests
+    P_folder.mkpath(babyName+"_"+momName);
+    P_folder.cd(babyName+"_"+momName);
+
+    //Auxiliar Cam file
+    A_folder = P_folder.filePath(filename_cam2);
+    //Principal cam file
+    P_folder = P_folder.filePath(filename_cam1);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+void MainWindow::checkFileCreation()
+{
+    //Check if file was created
+    if(!P_folder.exists())
+    {
+      MainWindow::ui->command->setText("Test "+QString::number(currentTest+1)+" suceffuly recorded!");
+      testCompleted(currentTest,"rgb(144, 238, 144);");
+//      tests[currentTest] = true;
+    }
+    else
+      MainWindow::ui->command->setText("Cannot create test "+QString::number(currentTest+1)+" file.");
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+void MainWindow::getFrame(std::string winName, cv::Mat frame)
+{
+
 }
 
