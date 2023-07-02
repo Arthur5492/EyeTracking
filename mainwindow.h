@@ -30,9 +30,6 @@ public:
     //Detect all cams found in system
     void detect_cams();
 
-    //Record cam //cvWindowTitle false = principal, true = auxiliar
-    void record_cam(QString filename, std::string winName, bool *checked);
-
     //Show in QWidgetTable P or A, wich cam got selected
     void setCam(QString type, int row);
 
@@ -108,7 +105,7 @@ private:
     QDate Birth;
 
     QVector<bool> tests; //each test made
-    std::atomic<bool> startRecord;
+    std::atomic<int> waitSync;//Wait for threads to sync
     std::atomic<bool> recordChecked;
 
     MultiThread *M_principal;

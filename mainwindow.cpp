@@ -250,12 +250,12 @@ void MainWindow::Starter()
     //Clear QVector<int> and int
     cameras.clear();
     currentTest=principalCam=auxiliarCam = -1;
-
+    waitSync = 0;
     m_semanas = 0;
 
     //Clear QVector<bool> and bool
     tests = QVector<bool>(3,false);
-    startRecord = false;
+
 
     //Clear QDate
     QDate clear;
@@ -347,6 +347,7 @@ void MainWindow::on_record_stop_clicked(bool checked)
 
         checkFileCreation();
 
+        waitSync = 0;
         cv::destroyAllWindows();
 
 //        bool completed = std::all_of(tests.begin(), tests.end(),[](bool v){return v;});
@@ -372,10 +373,10 @@ void MainWindow::on_record_stop_clicked(bool checked)
         this->ui->record_stop->setText("Gravando...");
 
         if(principalCam != -1 && !M_principal)
-            M_principal = new MultiThread("Principal",principalCam, &recordChecked, &startRecord);
+            M_principal = new MultiThread("Principal",principalCam, &recordChecked, &waitSync);
 
         if(auxiliarCam != -1 && !M_auxiliar)
-            M_auxiliar = new MultiThread("Auxiliar",auxiliarCam, &recordChecked, &startRecord);
+            M_auxiliar = new MultiThread("Auxiliar",auxiliarCam, &recordChecked, &waitSync);
 
 
 

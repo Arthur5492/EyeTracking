@@ -1,7 +1,7 @@
 #include "multithread.h"
 
-MultiThread::MultiThread(std::string winName, int cam, std::atomic<bool> *checked, std::atomic<bool> *startRecord) :
-             m_winName(winName), m_cam(cam), m_recordChecked(checked), m_startRecord(startRecord)
+MultiThread::MultiThread(std::string winName, int cam, std::atomic<bool> *checked, std::atomic<int> *waitSync) :
+             m_winName(winName), m_cam(cam), m_recordChecked(checked), m_waitSync(waitSync)
 {
     videoCam = nullptr;
     video=nullptr;
@@ -12,7 +12,8 @@ void MultiThread::record_cam()
     QMutexLocker locker(&mutex);//Data race
     cv::Mat frame; //Frame of video
 
-    int fourcc = cv::VideoWriter::fourcc('M','J','P','G'); //Set forcc variable
+    //Can be 'M','J','P','G'
+    int fourcc = cv::VideoWriter::fourcc('X','V','I','D'); //Set forcc variable
 
     if(m_cam == -1)
         return;
@@ -35,8 +36,8 @@ void MultiThread::record_cam()
         height = 480;
     }
 
-    videoCam->set(cv::CAP_PROP_FRAME_WIDTH,width);
-    videoCam->set(cv::CAP_PROP_FRAME_HEIGHT,height);
+//    videoCam->set(cv::CAP_PROP_FRAME_WIDTH,width);
+//    videoCam->set(cv::CAP_PROP_FRAME_HEIGHT,height);
     videoCam->read(frame);
     int fps = videoCam->get(cv::CAP_PROP_FPS);
 
@@ -50,9 +51,14 @@ void MultiThread::record_cam()
 
     QString videoFilename = m_filename.absolutePath();
 
-    video->open(videoFilename.toStdString(), fourcc, 30, frame.size(), true);
+    video->open(videoFilename.toStdString(),cv::CAP_GSTREAMER, fourcc, fps, frame.size(), true);
 
     std::cerr<<m_winName+":"<<fps<<std::endl;
+
+    //    cv::namedWindow(m_winName,cv::WINDOW_NORMAL); //Window
+    //    m_winName=="Principal" ?
+    //        cv::resizeWindow(m_winName, cv::Size(640,480)) :
+    //        cv::resizeWindow(m_winName, cv::Size(640,480)) ;
 
     if(!video->isOpened())
     {
@@ -60,34 +66,26 @@ void MultiThread::record_cam()
         return;
     }
 
-//    cv::namedWindow(m_winName,cv::WINDOW_NORMAL); //Window
-
     locker.unlock();
 
-//    m_winName=="Principal" ?
-//        cv::resizeWindow(m_winName, cv::Size(640,480)) :
-//        cv::resizeWindow(m_winName, cv::Size(640,480)) ;
+    (*m_waitSync)++;
+
+    while(*m_waitSync != 2)
+        ;
 
     std::cerr<<m_winName + " Entering thread"<<std::endl;
 
-    //Gambiarra, pretendo usar QWaitCondition
-    if(m_winName == principal)
-        *m_startRecord = true;
-    // gambiarra
-    while(!(*m_startRecord))
-        ;
-
-      //Frame copies
-//    cv::Mat A_frameCopy = frame.clone();
 //    cv::Mat P_frameCopy = frame.clone();
 
-    while(videoCam->read(A_frameCopy))
+    while(videoCam->read(frame))
     {
+        locker.relock();
         if(*m_recordChecked == false)//if record button clicked
-        break;
-        video->write(A_frameCopy);
+            break;
+        video->write(frame);
 //        emit sendFrame(m_winName, frame);
-//        cv::imshow(m_winName,frameCopy);
+        cv::imshow(m_winName,frame);
+        locker.unlock();
     }
 
     video->release();//Release videoWriter, but VideoCam still

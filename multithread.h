@@ -15,8 +15,9 @@
 class MultiThread : public QThread
 {
 public:
-    MultiThread(std::string winName, int cam, std::atomic<bool> *checked, std::atomic<bool> *startRecord);
+    MultiThread(std::string winName, int cam, std::atomic<bool> *checked, std::atomic<int> *waitSync);
     ~MultiThread();
+
 
     void run() override
     {
@@ -38,10 +39,12 @@ private:
     int m_cam; //Cam to record
 
     QMutex mutex;
-    //QWaitCondition waitCondition; future
+    QWaitCondition waitSync;
 
-    std::atomic<bool> *m_recordChecked; //Pause stop variable
-    std::atomic<bool> *m_startRecord; // Sync variable
+
+    std::atomic_bool *m_recordChecked; //Pause stop variable
+    std::atomic<int> *m_waitSync; // Sync variable
+
 
     //bool m_setCamerastoRecord;
 
