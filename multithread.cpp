@@ -13,7 +13,7 @@ void MultiThread::record_cam()
     cv::Mat frame; //Frame of video
 
     //Can be 'M','J','P','G'
-    int fourcc = cv::VideoWriter::fourcc('X','V','I','D'); //Set forcc variable
+    int fourcc = cv::VideoWriter::fourcc('M','J','P','G'); //Set forcc variable
 
     if(m_cam == -1)
         return;
@@ -79,13 +79,11 @@ void MultiThread::record_cam()
 
     while(videoCam->read(frame))
     {
-        locker.relock();
         if(*m_recordChecked == false)//if record button clicked
             break;
         video->write(frame);
 //        emit sendFrame(m_winName, frame);
-        cv::imshow(m_winName,frame);
-        locker.unlock();
+//        cv::imshow(m_winName,frame);
     }
 
     video->release();//Release videoWriter, but VideoCam still
