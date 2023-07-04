@@ -50,9 +50,9 @@ public:
 
     //Create baby folder
     void makeFolder();
+
     //Check video file creation
     void checkFileCreation();
-
 
 private slots:
 
@@ -80,10 +80,7 @@ private slots:
     void on_record_stop_clicked(bool checked);
 
     //Get thread frame
-    void getFrame(std::string winName, cv::Mat frame);
-
-
-
+    void useFrame(std::string winName, const cv::Mat frame);
 
 private:
     Ui::MainWindow *ui;
@@ -114,6 +111,9 @@ private:
     QDir P_folder;
     QDir A_folder;
     QDir atualFolder;
+
+
+
 
 };
 #endif // MAINWINDOW_H

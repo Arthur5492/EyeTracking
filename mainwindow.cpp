@@ -6,13 +6,15 @@ MainWindow::MainWindow(QWidget *parent):QMainWindow(parent),ui(new Ui::MainWindo
 {
     ui->setupUi(this);
 
-   Starter(); //Set all variables
+    Starter(); //Set all variables
+
+    //Enable on/off in button
+    ui->record_stop->setCheckable(true);
 
    //To rescan
    connect(ui->button_rescan,SIGNAL(clicked()),this,SLOT(button_rescan()));
 
-   //Enable on/off in button
-   ui->record_stop->setCheckable(true);
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////
 MainWindow::~MainWindow()
@@ -373,12 +375,19 @@ void MainWindow::on_record_stop_clicked(bool checked)
         this->ui->record_stop->setText("Gravando...");
 
         if(principalCam != -1 && !M_principal)
+        {
             M_principal = new MultiThread("Principal",principalCam, &recordChecked, &waitSync);
+            //Emit frame from threads
+            connect(M_principal, &MultiThread::sendFrame,this, &MainWindow::useFrame, Qt::QueuedConnection);
+        }
 
         if(auxiliarCam != -1 && !M_auxiliar)
+        {
             M_auxiliar = new MultiThread("Auxiliar",auxiliarCam, &recordChecked, &waitSync);
+                //Emit frame from threads
+                connect(M_auxiliar, &MultiThread::sendFrame, this,&MainWindow::useFrame, Qt::QueuedConnection);
 
-
+        }
 
         if(M_principal)
         {
@@ -394,7 +403,6 @@ void MainWindow::on_record_stop_clicked(bool checked)
             M_auxiliar->setFileName(A_folder);
             M_auxiliar->start();
         }
-
 
     }
 }
@@ -458,8 +466,8 @@ void MainWindow::checkFileCreation()
       MainWindow::ui->command->setText("Cannot create test "+QString::number(currentTest+1)+" file.");
 }
 //////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::getFrame(std::string winName, cv::Mat frame)
+void MainWindow::useFrame(std::string winName, const cv::Mat frame)
 {
-
+    cv::imshow(winName, frame);
+    cv::waitKey(1);
 }
-

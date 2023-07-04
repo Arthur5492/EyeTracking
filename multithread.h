@@ -14,6 +14,7 @@
 #include <QWaitCondition>
 class MultiThread : public QThread
 {
+    Q_OBJECT
 public:
     MultiThread(std::string winName, int cam, std::atomic<bool> *checked, std::atomic<int> *waitSync);
     ~MultiThread();
@@ -51,10 +52,13 @@ private:
     cv::VideoCapture *videoCam;
     cv::VideoWriter *video;
 
+    //Frame
+    cv::Mat frame; //Frame of video
+
 private slots:
 
 signals:
-//    void sendFrame(std::string winName, cv::Mat frame);
+    void sendFrame(std::string winName, const cv::Mat frame);
 
 };
 
