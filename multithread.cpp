@@ -1,10 +1,10 @@
 #include "multithread.h"
 
-MultiThread::MultiThread(std::string winName, int cam, std::atomic<bool> *checked, std::atomic<int> *waitSync) :
-             m_winName(winName), m_cam(cam), m_recordChecked(checked), m_waitSync(waitSync)
+MultiThread::MultiThread(std::string winName, int cam, std::atomic<bool> *checked, std::atomic<int> *waitSync, int fps) :
+    m_winName(winName), m_cam(cam), m_recordChecked(checked), m_waitSync(waitSync), m_fps(fps)
 {
     videoCam = nullptr;
-    video=nullptr;
+    video    = nullptr;
 }
 
 void MultiThread::record_cam()
@@ -13,15 +13,14 @@ void MultiThread::record_cam()
 
 
     //Can be 'M','J','P','G'
-    int fourcc = cv::VideoWriter::fourcc('M','J','P','G'); //Set forcc variable
+    int fourcc = cv::VideoWriter::fourcc('X','V','I','D'); //Set forcc variable
 
     if(m_cam == -1)
         return;
 
     if(!videoCam)
-        videoCam = new cv::VideoCapture(m_cam);//cv::CAP_V4L2
+        videoCam = new cv::VideoCapture(m_cam, cv::CAP_V4L2);//cv::CAP_V4L2
 
-//    videoCam->read(frame);
     int width = 0;//cv::CAP_PROP_FRAME_WIDTH;
     int height = 0;//cv::CAP_PROP_FRAME_HEIGHT;
 
@@ -38,8 +37,13 @@ void MultiThread::record_cam()
 
     videoCam->set(cv::CAP_PROP_FRAME_WIDTH,width);
     videoCam->set(cv::CAP_PROP_FRAME_HEIGHT,height);
+
+
+
     videoCam->read(frame);
-    int fps = videoCam->get(cv::CAP_PROP_FPS);
+    int fps = int(videoCam->get(cv::CAP_PROP_FPS));
+    if(m_winName == "Principal")
+        fps = 15;
 
     if(!videoCam->isOpened()){
         std::cerr<<"Cannot open VideoCapture cam "+ m_cam;
@@ -51,7 +55,7 @@ void MultiThread::record_cam()
 
     QString videoFilename = m_filename.absolutePath();
 
-    video->open(videoFilename.toStdString(),cv::CAP_GSTREAMER, fourcc, fps, frame.size(), true);
+    video->open(videoFilename.toStdString(), fourcc, fps, frame.size(), true);
 
     std::cerr<<m_winName+":"<<fps<<std::endl;
 
@@ -72,13 +76,14 @@ void MultiThread::record_cam()
 
 //    cv::Mat P_frameCopy = frame.clone();
 
-    while(videoCam->read(frame))
+    while(videoCam->read(frame) && *m_recordChecked)
     {
-        if(*m_recordChecked == false)//if record button clicked
-            break;
-        video->write(frame);
-        emit sendFrame(m_winName, frame);
-        msleep(5);
+        if(frame.empty() == false)
+        {
+            video->write(frame);
+            emit sendFrame(m_winName, frame);
+            frame.release();
+        }
     }
 
     video->release();//Release videoWriter, but VideoCam still

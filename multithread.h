@@ -16,7 +16,7 @@ class MultiThread : public QThread
 {
     Q_OBJECT
 public:
-    MultiThread(std::string winName, int cam, std::atomic<bool> *checked, std::atomic<int> *waitSync);
+    MultiThread(std::string winName, int cam, std::atomic<bool> *checked, std::atomic<int> *waitSync, int fps);
     ~MultiThread();
 
 
@@ -54,6 +54,8 @@ private:
 
     //Frame
     cv::Mat frame; //Frame of video
+
+    int m_fps;
 
 private slots:
 

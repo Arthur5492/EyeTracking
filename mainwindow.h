@@ -112,7 +112,7 @@ private:
     QDir A_folder;
     QDir atualFolder;
 
-
+    bool dateChecked;
 
 
 };

@@ -34,13 +34,36 @@ void MainWindow::detect_cams()
     int row_number = 0;
 
 
-    for(int i = 0; i<10; i++)
+    for(int i = 1; i<10; i++)
     {
         cv::VideoCapture test(i);
         cv::Mat frame;
 
+
         if(test.isOpened())
         {
+//            test.set(cv::CAP_PROP_FRAME_WIDTH,640);
+//            test.set(cv::CAP_PROP_FRAME_HEIGHT,480);
+
+//            int frames_number = 120;
+//            time_t start,end;
+
+//            time(&start);
+
+//            for(int i=0;i<frames_number;i++)
+//            {
+//                test>>frame;
+//            }
+
+//            time(&end);
+
+//            double seconds = difftime(end, start);
+
+//            int fps = frames_number/ seconds;
+
+//            std::cerr<<""<<fps<<std::endl<<std::endl<<std::endl;
+
+
             QTableWidgetItem *imageItem= new QTableWidgetItem;
             QPixmap img_pxmap;
             test>>frame;
@@ -59,6 +82,8 @@ void MainWindow::detect_cams()
             row_number++;
         }
         ui->TableWidget_Cams->resizeRowsToContents();
+
+
         test.release();
     }
 
@@ -135,11 +160,16 @@ void MainWindow::on_dateEdit_editingFinished()
     //Insert
 
     ui->correctAge->setText(idadeCorrigida);
+
+    dateChecked = true;
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::on_lineEdit_editingFinished()
 {
     m_semanas = ui->lineEdit->text().toInt();
+
+    if(dateChecked)
+        on_dateEdit_editingFinished();
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::on_test_1_clicked(){
@@ -257,6 +287,7 @@ void MainWindow::Starter()
 
     //Clear QVector<bool> and bool
     tests = QVector<bool>(3,false);
+    dateChecked = false;
 
 
     //Clear QDate
@@ -376,14 +407,14 @@ void MainWindow::on_record_stop_clicked(bool checked)
 
         if(principalCam != -1 && !M_principal)
         {
-            M_principal = new MultiThread("Principal",principalCam, &recordChecked, &waitSync);
+            M_principal = new MultiThread("Principal",principalCam, &recordChecked, &waitSync, 1);
             //Emit frame from threads
             connect(M_principal, &MultiThread::sendFrame,this, &MainWindow::useFrame, Qt::QueuedConnection);
         }
 
         if(auxiliarCam != -1 && !M_auxiliar)
         {
-            M_auxiliar = new MultiThread("Auxiliar",auxiliarCam, &recordChecked, &waitSync);
+            M_auxiliar = new MultiThread("Auxiliar",auxiliarCam, &recordChecked, &waitSync, 1);
                 //Emit frame from threads
                 connect(M_auxiliar, &MultiThread::sendFrame, this,&MainWindow::useFrame, Qt::QueuedConnection);
 
@@ -403,6 +434,9 @@ void MainWindow::on_record_stop_clicked(bool checked)
             M_auxiliar->setFileName(A_folder);
             M_auxiliar->start();
         }
+        else
+            waitSync++;
+
 
     }
 }
@@ -468,6 +502,8 @@ void MainWindow::checkFileCreation()
 //////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::useFrame(std::string winName, const cv::Mat frame)
 {
+    cv::namedWindow(winName);
+    cv::resizeWindow(winName,cv::Size(640,480));
     cv::imshow(winName, frame);
     cv::waitKey(1);
 }

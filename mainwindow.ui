@@ -335,7 +335,7 @@
              </font>
             </property>
             <property name="text">
-             <string>Idade Restante: </string>
+             <string>Idade Corrigida: </string>
             </property>
            </widget>
           </item>
