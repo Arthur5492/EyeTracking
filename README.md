@@ -8,16 +8,10 @@
 ## Technology Stack
 <ul>
 <li><strong>Programming Language:</strong> C++</li>
+<li><strong>Computer Vision Library:</strong> OpenCV for camera imaging</li>
 <li><strong>GUI Framework:</strong> Qt Creator</li>
 <li><strong>Multithreading:</strong> Enables concurrent camera operations</li>
 <li><strong>Additional Libraries:</strong> Qt-specific and others for camera integration</li>
-</ul>
-
-## Features
-<ul>
-<li><strong>Dual-Camera Recording:</strong> Leverages threading for simultaneous operation of two cameras.</li>
-<li><strong>Four Test Modes:</strong> Offers comprehensive analysis through a variety of ocular movement tests.</li>
-<li><strong>User-Friendly Interface:</strong> Developed using Qt Creator for ease of use in clinical settings.</li>
 </ul>
 
 ## Installation and Usage
